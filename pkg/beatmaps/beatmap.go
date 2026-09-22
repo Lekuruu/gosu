@@ -80,7 +80,7 @@ func (beatmap *Beatmap) ParsePoint(point string) {
 	}
 
 	signature := 4
-	sampleSet := 0 //beatmap.Timings.LastSet
+	sampleSet := beatmap.Timings.BaseSet
 	sampleIndex := 1
 	sampleVolume := 1.0
 	inherited := false

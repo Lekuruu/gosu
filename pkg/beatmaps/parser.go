@@ -30,16 +30,15 @@ func parseGeneral(line []string, beatmap *Beatmap) bool {
 		beatmap.Audio += line[1]
 	case "PreviewTime":
 		beatmap.PreviewTime, _ = strconv.ParseInt(line[1], 10, 64)
-		//case "SampleSet":
-		//	switch line[1] {
-		//	case "Normal", "All":
-		//		beatmap.Timings.BaseSet = 1
-		//	case "Soft", "None":
-		//		beatmap.Timings.BaseSet = 2
-		//	case "Drum":
-		//		beatmap.Timings.BaseSet = 3
-		//	}
-		//	beatmap.Timings.LastSet = beatmap.Timings.BaseSet
+	case "SampleSet":
+		switch line[1] {
+		case "Normal", "All":
+			beatmap.Timings.BaseSet = 1
+		case "Soft", "None":
+			beatmap.Timings.BaseSet = 2
+		case "Drum":
+			beatmap.Timings.BaseSet = 3
+		}
 	}
 
 	return false

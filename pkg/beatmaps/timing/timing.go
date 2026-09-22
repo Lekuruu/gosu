@@ -49,6 +49,7 @@ func (t ControlPoint) GetBeatLength() float64 {
 type Timings struct {
 	SliderMult float64
 	TickRate   float64
+	BaseSet    int
 
 	defaultTimingPoint ControlPoint
 
@@ -58,6 +59,7 @@ type Timings struct {
 
 func NewTimings() *Timings {
 	return &Timings{
+		BaseSet: 1,
 		defaultTimingPoint: ControlPoint{
 			Time:             0,
 			beatLengthBase:   60000 / 60,
