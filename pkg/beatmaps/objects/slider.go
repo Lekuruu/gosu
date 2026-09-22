@@ -2,21 +2,28 @@ package objects
 
 import (
 	"cmp"
+	"math"
+	"slices"
+	"strconv"
+	"strings"
+
 	"github.com/Lekuruu/gosu/internal/math/curves"
 	"github.com/Lekuruu/gosu/internal/math/mutils"
 	"github.com/Lekuruu/gosu/internal/math/vector"
 	"github.com/Lekuruu/gosu/pkg/beatmaps/audio"
 	"github.com/Lekuruu/gosu/pkg/beatmaps/difficulty"
 	"github.com/Lekuruu/gosu/pkg/beatmaps/timing"
-	"math"
-	"slices"
-	"strconv"
-	"strings"
 )
 
 type TickPoint struct {
 	Time      float64
 	IsReverse bool
+}
+
+type SliderEdgeSound struct {
+	Sound       audio.HitSound
+	SampleSet   int
+	AdditionSet int
 }
 
 type Slider struct {
@@ -27,10 +34,11 @@ type Slider struct {
 	Timings *timing.Timings
 	TPoint  timing.ControlPoint
 
-	pixelLength float64
+	PixelLength float64
 	RepeatCount int64
 
-	ScorePoints []TickPoint
+	scorePoints []TickPoint
+	edgeSounds  []SliderEdgeSound
 
 	diff *difficulty.Difficulty
 
@@ -44,7 +52,7 @@ func NewSlider(data []string) *Slider {
 
 	slider.PositionDelegate = slider.PositionAt
 
-	slider.pixelLength, _ = strconv.ParseFloat(data[7], 64)
+	slider.PixelLength, _ = strconv.ParseFloat(data[7], 64)
 	slider.RepeatCount, _ = strconv.ParseInt(data[6], 10, 64)
 
 	list := strings.Split(data[5], "|")
@@ -57,39 +65,69 @@ func NewSlider(data []string) *Slider {
 		points = append(points, vector.NewVec2f(float32(x), float32(y)))
 	}
 
-	slider.multiCurve = curves.NewMultiCurveT(list[0], points, slider.pixelLength)
+	slider.multiCurve = curves.NewMultiCurveT(list[0], points, slider.PixelLength)
 
 	slider.EndTime = slider.StartTime
 	slider.EndPosRaw = slider.multiCurve.PointAt(1.0)
 
 	baseSample := slider.sounds[0]
+	baseHitSample := slider.GetHitSample()
 
 	slider.sounds = make([]audio.HitSound, slider.RepeatCount+1)
+	slider.edgeSounds = make([]SliderEdgeSound, slider.RepeatCount+1)
 
 	for i := range slider.sounds {
 		slider.sounds[i] = baseSample
+		slider.edgeSounds[i] = SliderEdgeSound{
+			Sound:       baseSample,
+			SampleSet:   baseHitSample.SampleSet,
+			AdditionSet: baseHitSample.AdditionSet,
+		}
 	}
 
 	if len(data) > 8 {
 		subData := strings.Split(data[8], "|")
-		for i, v := range subData {
+		for i, v := range subData[:min(len(subData), len(slider.sounds))] {
 			sound, _ := strconv.Atoi(v)
 			slider.sounds[i] = audio.HitSound(sound)
+			slider.edgeSounds[i].Sound = audio.HitSound(sound)
+		}
+	}
+
+	if len(data) > 9 {
+		subData := strings.Split(data[9], "|")
+		for i, v := range subData[:min(len(subData), len(slider.edgeSounds))] {
+			sampleSet, additionSet, _ := strings.Cut(v, ":")
+			slider.edgeSounds[i].SampleSet, _ = strconv.Atoi(sampleSet)
+			slider.edgeSounds[i].AdditionSet, _ = strconv.Atoi(additionSet)
 		}
 	}
 
 	return slider
 }
 
+func (slider *Slider) GetEdgeSounds() []SliderEdgeSound {
+	return slices.Clone(slider.edgeSounds)
+}
+
+func (slider *Slider) GetScorePoints() []TickPoint {
+	return slices.Clone(slider.scorePoints)
+}
+
+func (slider *Slider) AppendScorePoints(tick TickPoint) {
+	slider.scorePoints = append(slider.scorePoints, tick)
+	slices.SortFunc(slider.scorePoints, func(a, b TickPoint) int {
+		return cmp.Compare(a.Time, b.Time)
+	})
+}
+
 func (slider *Slider) PositionAt(time float64) vector.Vector2f {
 	if slider.IsRetarded() {
 		return slider.StartPosRaw
 	}
-
 	t1 := mutils.ClampF64(time, slider.StartTime, slider.EndTime)
 
 	progress := (t1 - slider.StartTime) / slider.spanDuration
-
 	progress = math.Mod(progress, 2)
 	if progress >= 1 {
 		progress = 2 - progress
@@ -115,8 +153,8 @@ func (slider *Slider) SetTiming(timings *timing.Timings) {
 	minDistanceFromEnd := velocity * 0.01
 	tickDistance := slider.Timings.GetTickDistance(slider.TPoint)
 
-	if slider.multiCurve.GetLength() > 0 && tickDistance > slider.pixelLength {
-		tickDistance = slider.pixelLength
+	if slider.multiCurve.GetLength() > 0 && tickDistance > slider.PixelLength {
+		tickDistance = slider.PixelLength
 	}
 
 	for span := 0; span < int(slider.RepeatCount); span++ {
@@ -129,30 +167,31 @@ func (slider *Slider) SetTiming(timings *timing.Timings) {
 				break
 			}
 
-			// Always generate ticks from the start of the path rather than the span to ensure that ticks in repeat spans are positioned identically to those in non-repeat spans
+			// Always generate ticks from the start of the path rather than the span to ensure
+			// that ticks in repeat spans are positioned identically to those in non-repeat spans
 			timeProgress := d / cLength
 			if reversed {
 				timeProgress = 1 - timeProgress
 			}
 
-			slider.ScorePoints = append(slider.ScorePoints, TickPoint{
+			slider.scorePoints = append(slider.scorePoints, TickPoint{
 				Time: spanStartTime + timeProgress*slider.spanDuration,
 			})
 		}
 
 		if span < int(slider.RepeatCount)-1 {
-			slider.ScorePoints = append(slider.ScorePoints, TickPoint{
+			slider.scorePoints = append(slider.scorePoints, TickPoint{
 				Time:      spanStartTime + slider.spanDuration,
 				IsReverse: true,
 			})
 		} else {
-			slider.ScorePoints = append(slider.ScorePoints, TickPoint{
+			slider.scorePoints = append(slider.scorePoints, TickPoint{
 				Time: max(slider.StartTime+(slider.EndTime-slider.StartTime)/2, slider.EndTime-36),
 			})
 		}
 	}
 
-	slices.SortFunc(slider.ScorePoints, func(a, b TickPoint) int {
+	slices.SortFunc(slider.scorePoints, func(a, b TickPoint) int {
 		return cmp.Compare(a.Time, b.Time)
 	})
 
