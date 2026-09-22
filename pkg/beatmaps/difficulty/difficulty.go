@@ -39,18 +39,15 @@ func (diff *Difficulty) calculate() {
 		od = min(od*1.4, 10)
 		hp = min(hp*1.4, 10)
 	}
-
 	if diff.Mods&Easy > 0 {
 		ar /= 2
 		cs /= 2
 		od /= 2
 		hp /= 2
 	}
-
 	diff.HPMod = hp
 
 	diff.CircleRadius = DifficultyRate(cs, 54.4, 32, 9.6)
-
 	diff.Preempt = DifficultyRate(ar, 1800, 1200, 450)
 
 	diff.Hit50 = DifficultyRate(od, 200, 150, 100)
@@ -128,11 +125,9 @@ func DifficultyRate(diff, min, mid, max float64) float64 {
 	if diff > 5 {
 		return mid + (max-mid)*(diff-5)/5
 	}
-
 	if diff < 5 {
 		return mid - (mid-min)*(5-diff)/5
 	}
-
 	return mid
 }
 

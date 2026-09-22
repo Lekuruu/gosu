@@ -1,8 +1,9 @@
 package objects
 
 import (
-	"github.com/Lekuruu/gosu/pkg/beatmaps/timing"
 	"strconv"
+
+	"github.com/Lekuruu/gosu/pkg/beatmaps/timing"
 )
 
 type Spinner struct {
@@ -15,9 +16,7 @@ func NewSpinner(data []string) *Spinner {
 	spinner := &Spinner{
 		HitObject: commonParse(data, 6),
 	}
-
 	spinner.EndTime, _ = strconv.ParseFloat(data[5], 64)
-
 	return spinner
 }
 

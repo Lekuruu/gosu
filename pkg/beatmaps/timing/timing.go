@@ -2,10 +2,11 @@ package timing
 
 import (
 	"cmp"
-	"github.com/Lekuruu/gosu/internal/math/mutils"
 	"math"
 	"slices"
 	"sort"
+
+	"github.com/Lekuruu/gosu/internal/math/mutils"
 )
 
 type ControlPoint struct {
