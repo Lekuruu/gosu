@@ -41,6 +41,7 @@ type IHitObject interface {
 	SetStackOffset(offset float32, modifier difficulty.Modifier)
 
 	GetSounds() []audio.HitSound
+	GetHitSample() audio.HitSoundInfo
 
 	GetColorOffset() int
 	IsNewCombo() bool
@@ -69,6 +70,8 @@ type HitObject struct {
 	HitObjectID int
 
 	sounds []audio.HitSound
+
+	BasicHitSound audio.HitSoundInfo
 
 	NewCombo    bool
 	ComboNumber int
@@ -200,6 +203,10 @@ func (hitObject *HitObject) SetStackOffset(offset float32, modifier difficulty.M
 
 func (hitObject *HitObject) GetSounds() []audio.HitSound {
 	return hitObject.sounds
+}
+
+func (hitObject *HitObject) GetHitSample() audio.HitSoundInfo {
+	return hitObject.BasicHitSound
 }
 
 func (hitObject *HitObject) GetColorOffset() int {

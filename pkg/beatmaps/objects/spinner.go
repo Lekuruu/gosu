@@ -13,7 +13,7 @@ type Spinner struct {
 
 func NewSpinner(data []string) *Spinner {
 	spinner := &Spinner{
-		HitObject: commonParse(data),
+		HitObject: commonParse(data, 6),
 	}
 
 	spinner.EndTime, _ = strconv.ParseFloat(data[5], 64)

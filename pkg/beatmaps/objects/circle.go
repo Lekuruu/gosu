@@ -12,7 +12,7 @@ type Circle struct {
 
 func NewCircle(data []string) *Circle {
 	return &Circle{
-		HitObject: commonParse(data),
+		HitObject: commonParse(data, 5),
 	}
 }
 

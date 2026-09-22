@@ -39,7 +39,7 @@ type Slider struct {
 
 func NewSlider(data []string) *Slider {
 	slider := &Slider{
-		HitObject: commonParse(data),
+		HitObject: commonParse(data, 10),
 	}
 
 	slider.PositionDelegate = slider.PositionAt
