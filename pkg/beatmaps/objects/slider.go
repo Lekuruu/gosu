@@ -15,6 +15,11 @@ import (
 	"github.com/Lekuruu/gosu/pkg/beatmaps/timing"
 )
 
+const (
+	maxPathLength = 100_000_000
+	maxRepeats    = 10_000
+)
+
 type TickPoint struct {
 	Time      float64
 	IsReverse bool
@@ -49,11 +54,24 @@ func NewSlider(data []string) *Slider {
 	slider := &Slider{
 		HitObject: commonParse(data, 10),
 	}
-
 	slider.PositionDelegate = slider.PositionAt
 
-	slider.PixelLength, _ = strconv.ParseFloat(data[7], 64)
-	slider.RepeatCount, _ = strconv.ParseInt(data[6], 10, 64)
+	pixelLength, err := strconv.ParseFloat(data[7], 64)
+	if err != nil || pixelLength < 0 || math.IsNaN(pixelLength) || math.IsInf(pixelLength, 0) {
+		return nil
+	}
+	slider.PixelLength = pixelLength
+
+	repeatCount, err := strconv.ParseInt(data[6], 10, 64)
+	if err != nil || repeatCount < 1 {
+		return nil
+	}
+	slider.RepeatCount = repeatCount
+	if slider.PixelLength*float64(slider.RepeatCount) > maxPathLength*10 {
+		return nil
+	}
+	slider.PixelLength = min(slider.PixelLength, maxPathLength)
+	slider.RepeatCount = min(slider.RepeatCount, maxRepeats)
 
 	list := strings.Split(data[5], "|")
 	points := []vector.Vector2f{slider.StartPosRaw}
@@ -65,7 +83,12 @@ func NewSlider(data []string) *Slider {
 		points = append(points, vector.NewVec2f(float32(x), float32(y)))
 	}
 
-	slider.multiCurve = curves.NewMultiCurveT(list[0], points, slider.PixelLength)
+	if slider.PixelLength == 0 {
+		slider.multiCurve = curves.NewMultiCurve(list[0], points)
+		slider.PixelLength = float64(slider.multiCurve.GetLength())
+	} else {
+		slider.multiCurve = curves.NewMultiCurveT(list[0], points, slider.PixelLength)
+	}
 
 	slider.EndTime = slider.StartTime
 	slider.EndPosRaw = slider.multiCurve.PointAt(1.0)

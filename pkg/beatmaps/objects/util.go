@@ -8,12 +8,13 @@ func CreateObject(data []string) IHitObject {
 
 	if (objType & CIRCLE) > 0 {
 		return NewCircle(data)
-	} else if (objType & SPINNER) > 0 {
+	}
+	if (objType & SPINNER) > 0 {
 		return NewSpinner(data)
-	} else if (objType & SLIDER) > 0 {
+	}
+	if (objType & SLIDER) > 0 {
 		return NewSlider(data)
 	}
-
 	return nil
 }
 
