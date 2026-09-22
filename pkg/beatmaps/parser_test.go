@@ -11,27 +11,27 @@ import (
 func TestParseFromReaderParsesUTF8Beatmap(t *testing.T) {
 	file := openFixture(t, "lost-umbrella.osu")
 
-	beatMap, err := beatmaps.ParseFromReader(file)
+	beatmap, err := beatmaps.ParseFromReader(file)
 	if err != nil {
 		t.Fatalf("ParseFromReader() error = %v", err)
 	}
 
-	if beatMap.Artist != "inabakumori" {
-		t.Errorf("Artist = %q, want %q", beatMap.Artist, "inabakumori")
+	if beatmap.Artist != "inabakumori" {
+		t.Errorf("Artist = %q, want %q", beatmap.Artist, "inabakumori")
 	}
-	if beatMap.ArtistUnicode != "稲葉曇" {
-		t.Errorf("ArtistUnicode = %q, want %q", beatMap.ArtistUnicode, "稲葉曇")
+	if beatmap.ArtistUnicode != "稲葉曇" {
+		t.Errorf("ArtistUnicode = %q, want %q", beatmap.ArtistUnicode, "稲葉曇")
 	}
-	if beatMap.Title != "Lost Umbrella" {
-		t.Errorf("Title = %q, want %q", beatMap.Title, "Lost Umbrella")
+	if beatmap.Title != "Lost Umbrella" {
+		t.Errorf("Title = %q, want %q", beatmap.Title, "Lost Umbrella")
 	}
-	if beatMap.TitleUnicode != "ロストアンブレラ" {
-		t.Errorf("TitleUnicode = %q, want %q", beatMap.TitleUnicode, "ロストアンブレラ")
+	if beatmap.TitleUnicode != "ロストアンブレラ" {
+		t.Errorf("TitleUnicode = %q, want %q", beatmap.TitleUnicode, "ロストアンブレラ")
 	}
-	if len(beatMap.HitObjects) != 887 {
-		t.Errorf("len(HitObjects) = %d, want 887", len(beatMap.HitObjects))
+	if len(beatmap.HitObjects) != 887 {
+		t.Errorf("len(HitObjects) = %d, want 887", len(beatmap.HitObjects))
 	}
-	if !beatMap.Timings.HasPoints() {
+	if !beatmap.Timings.HasPoints() {
 		t.Error("Timings.HasPoints() = false, want true")
 	}
 }
@@ -39,16 +39,16 @@ func TestParseFromReaderParsesUTF8Beatmap(t *testing.T) {
 func TestParseFromReaderParsesUTF16Beatmap(t *testing.T) {
 	file := openFixture(t, "lost-umbrella-utf16.osu")
 
-	beatMap, err := beatmaps.ParseFromReader(file)
+	beatmap, err := beatmaps.ParseFromReader(file)
 	if err != nil {
 		t.Fatalf("ParseFromReader() error = %v", err)
 	}
 
-	if beatMap.ArtistUnicode != "稲葉曇" {
-		t.Errorf("ArtistUnicode = %q, want %q", beatMap.ArtistUnicode, "稲葉曇")
+	if beatmap.ArtistUnicode != "稲葉曇" {
+		t.Errorf("ArtistUnicode = %q, want %q", beatmap.ArtistUnicode, "稲葉曇")
 	}
-	if beatMap.TitleUnicode != "ロストアンブレラ" {
-		t.Errorf("TitleUnicode = %q, want %q", beatMap.TitleUnicode, "ロストアンブレラ")
+	if beatmap.TitleUnicode != "ロストアンブレラ" {
+		t.Errorf("TitleUnicode = %q, want %q", beatmap.TitleUnicode, "ロストアンブレラ")
 	}
 }
 
@@ -58,19 +58,19 @@ func TestParseFromByteParsesLargeBeatmap(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	beatMap, err := beatmaps.ParseFromByte(data)
+	beatmap, err := beatmaps.ParseFromByte(data)
 	if err != nil {
 		t.Fatalf("ParseFromByte() error = %v", err)
 	}
 
-	if beatMap.Artist != "Avenged Sevenfold" {
-		t.Errorf("Artist = %q, want %q", beatMap.Artist, "Avenged Sevenfold")
+	if beatmap.Artist != "Avenged Sevenfold" {
+		t.Errorf("Artist = %q, want %q", beatmap.Artist, "Avenged Sevenfold")
 	}
-	if len(beatMap.HitObjects) != 3201 {
-		t.Errorf("len(HitObjects) = %d, want 3201", len(beatMap.HitObjects))
+	if len(beatmap.HitObjects) != 3201 {
+		t.Errorf("len(HitObjects) = %d, want 3201", len(beatmap.HitObjects))
 	}
-	if beatMap.MapID != 1256809 {
-		t.Errorf("MapID = %d, want 1256809", beatMap.MapID)
+	if beatmap.MapID != 1256809 {
+		t.Errorf("MapID = %d, want 1256809", beatmap.MapID)
 	}
 }
 

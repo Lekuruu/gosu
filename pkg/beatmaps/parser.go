@@ -4,112 +4,113 @@ import (
 	"bytes"
 	"cmp"
 	"errors"
-	"github.com/Lekuruu/gosu/internal/files"
-	"github.com/Lekuruu/gosu/internal/math/mutils"
-	"github.com/Lekuruu/gosu/pkg/beatmaps/objects"
 	"io"
 	"math"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/Lekuruu/gosu/internal/files"
+	"github.com/Lekuruu/gosu/internal/math/mutils"
+	"github.com/Lekuruu/gosu/pkg/beatmaps/objects"
 )
 
 const bufferSize = 10 * 1024 * 1024
 
-func parseGeneral(line []string, beatMap *BeatMap) bool {
+func parseGeneral(line []string, beatmap *Beatmap) bool {
 	switch line[0] {
 	case "Mode":
-		beatMap.Mode, _ = strconv.Atoi(line[1])
+		beatmap.Mode, _ = strconv.Atoi(line[1])
 	case "StackLeniency":
-		beatMap.StackLeniency, _ = strconv.ParseFloat(line[1], 64)
-		if math.IsNaN(beatMap.StackLeniency) {
-			beatMap.StackLeniency = 0.0
+		beatmap.StackLeniency, _ = strconv.ParseFloat(line[1], 64)
+		if math.IsNaN(beatmap.StackLeniency) {
+			beatmap.StackLeniency = 0.0
 		}
 	case "AudioFilename":
-		beatMap.Audio += line[1]
+		beatmap.Audio += line[1]
 	case "PreviewTime":
-		beatMap.PreviewTime, _ = strconv.ParseInt(line[1], 10, 64)
+		beatmap.PreviewTime, _ = strconv.ParseInt(line[1], 10, 64)
 		//case "SampleSet":
 		//	switch line[1] {
 		//	case "Normal", "All":
-		//		beatMap.Timings.BaseSet = 1
+		//		beatmap.Timings.BaseSet = 1
 		//	case "Soft", "None":
-		//		beatMap.Timings.BaseSet = 2
+		//		beatmap.Timings.BaseSet = 2
 		//	case "Drum":
-		//		beatMap.Timings.BaseSet = 3
+		//		beatmap.Timings.BaseSet = 3
 		//	}
-		//	beatMap.Timings.LastSet = beatMap.Timings.BaseSet
+		//	beatmap.Timings.LastSet = beatmap.Timings.BaseSet
 	}
 
 	return false
 }
 
-func parseMetadata(line []string, beatMap *BeatMap) {
+func parseMetadata(line []string, beatmap *Beatmap) {
 	switch line[0] {
 	case "Title":
-		beatMap.Title = line[1]
+		beatmap.Title = line[1]
 	case "TitleUnicode":
-		beatMap.TitleUnicode = line[1]
+		beatmap.TitleUnicode = line[1]
 	case "Artist":
-		beatMap.Artist = line[1]
+		beatmap.Artist = line[1]
 	case "ArtistUnicode":
-		beatMap.ArtistUnicode = line[1]
+		beatmap.ArtistUnicode = line[1]
 	case "Creator":
-		beatMap.Creator = line[1]
+		beatmap.Creator = line[1]
 	case "FileVersion":
-		beatMap.Version = line[1]
+		beatmap.Version = line[1]
 	case "Source":
-		beatMap.Source = line[1]
+		beatmap.Source = line[1]
 	case "Tags":
-		beatMap.Tags = line[1]
+		beatmap.Tags = line[1]
 	case "BeatmapID":
-		beatMap.MapID, _ = strconv.ParseInt(line[1], 10, 64)
+		beatmap.MapID, _ = strconv.ParseInt(line[1], 10, 64)
 	case "BeatmapSetID":
-		beatMap.SetID, _ = strconv.ParseInt(line[1], 10, 64)
+		beatmap.SetID, _ = strconv.ParseInt(line[1], 10, 64)
 	}
 }
 
-func parseDifficulty(line []string, beatMap *BeatMap) {
+func parseDifficulty(line []string, beatmap *Beatmap) {
 	switch line[0] {
 	case "SliderMultiplier":
-		beatMap.SliderMultiplier, _ = strconv.ParseFloat(line[1], 64)
-		beatMap.Timings.SliderMult = beatMap.SliderMultiplier
+		beatmap.SliderMultiplier, _ = strconv.ParseFloat(line[1], 64)
+		beatmap.Timings.SliderMult = beatmap.SliderMultiplier
 	case "ApproachRate":
 		parsed, _ := strconv.ParseFloat(line[1], 64)
-		beatMap.Difficulty.SetAR(mutils.ClampF64(parsed, 0, 10))
-		beatMap.arSpecified = true
+		beatmap.Difficulty.SetAR(mutils.ClampF64(parsed, 0, 10))
+		beatmap.arSpecified = true
 	case "CircleSize":
 		parsed, _ := strconv.ParseFloat(line[1], 64)
-		beatMap.Difficulty.SetCS(mutils.ClampF64(parsed, 0, 10))
+		beatmap.Difficulty.SetCS(mutils.ClampF64(parsed, 0, 10))
 	case "SliderTickRate":
-		beatMap.Timings.TickRate, _ = strconv.ParseFloat(line[1], 64)
+		beatmap.Timings.TickRate, _ = strconv.ParseFloat(line[1], 64)
 	case "HPDrainRate":
 		parsed, _ := strconv.ParseFloat(line[1], 64)
-		beatMap.Difficulty.SetHP(mutils.ClampF64(parsed, 0, 10))
+		beatmap.Difficulty.SetHP(mutils.ClampF64(parsed, 0, 10))
 	case "OverallDifficulty":
 		parsed, _ := strconv.ParseFloat(line[1], 64)
-		beatMap.Difficulty.SetOD(mutils.ClampF64(parsed, 0, 10))
+		beatmap.Difficulty.SetOD(mutils.ClampF64(parsed, 0, 10))
 
-		if !beatMap.arSpecified {
-			beatMap.Difficulty.SetAR(beatMap.Difficulty.GetOD())
+		if !beatmap.arSpecified {
+			beatmap.Difficulty.SetAR(beatmap.Difficulty.GetOD())
 		}
 	}
 }
 
-func parseEvents(line []string, beatMap *BeatMap) {
+func parseEvents(line []string, beatmap *Beatmap) {
 	switch line[0] {
 	case "Background", "0":
-		beatMap.Bg = strings.Replace(line[2], "\"", "", -1)
+		beatmap.Bg = strings.Replace(line[2], "\"", "", -1)
 	case "Break", "2":
-		beatMap.Pauses = append(beatMap.Pauses, NewPause(line))
+		beatmap.Pauses = append(beatmap.Pauses, NewPause(line))
 	}
 }
 
-func parseHitObjects(line []string, beatMap *BeatMap) {
+func parseHitObjects(line []string, beatmap *Beatmap) {
 	obj := objects.CreateObject(line)
 
 	if obj != nil {
-		beatMap.HitObjects = append(beatMap.HitObjects, obj)
+		beatmap.HitObjects = append(beatmap.HitObjects, obj)
 	}
 }
 
@@ -140,12 +141,12 @@ func getSection(line string) string {
 	return ""
 }
 
-func ParseFromByte(data []byte) (*BeatMap, error) {
+func ParseFromByte(data []byte) (*Beatmap, error) {
 	return ParseFromReader(bytes.NewReader(data))
 }
 
-func ParseFromReader(reader io.Reader) (*BeatMap, error) {
-	beatMap := NewBeatMap()
+func ParseFromReader(reader io.Reader) (*Beatmap, error) {
+	beatmap := NewBeatmap()
 
 	scanner := files.NewScannerBuf(reader, bufferSize)
 
@@ -158,7 +159,7 @@ func ParseFromReader(reader io.Reader) (*BeatMap, error) {
 
 		if strings.HasPrefix(line, "osu file format v") {
 			trim := strings.TrimPrefix(line, "osu file format v")
-			beatMap.FileVersion, _ = strconv.Atoi(trim)
+			beatmap.FileVersion, _ = strconv.Atoi(trim)
 		}
 
 		section := getSection(line)
@@ -170,23 +171,23 @@ func ParseFromReader(reader io.Reader) (*BeatMap, error) {
 		switch currentSection {
 		case "General":
 			if arr := tokenizeN(line, ":", 2); len(arr) > 1 {
-				parseGeneral(arr, beatMap)
+				parseGeneral(arr, beatmap)
 			}
 		case "Metadata":
 			if arr := tokenizeN(line, ":", 2); len(arr) > 1 {
-				parseMetadata(arr, beatMap)
+				parseMetadata(arr, beatmap)
 			}
 		case "Difficulty":
 			if arr := tokenizeN(line, ":", 2); len(arr) > 1 {
-				parseDifficulty(arr, beatMap)
+				parseDifficulty(arr, beatmap)
 			}
 		case "Events":
 			if arr := tokenize(line, ","); len(arr) > 1 {
-				parseEvents(arr, beatMap)
+				parseEvents(arr, beatmap)
 			}
 		case "TimingPoints":
 			if arr := tokenize(line, ","); len(arr) > 1 {
-				beatMap.ParsePoint(line)
+				beatmap.ParsePoint(line)
 				counter++
 			}
 		case "HitObjects":
@@ -196,34 +197,34 @@ func ParseFromReader(reader io.Reader) (*BeatMap, error) {
 				objTypeI, _ := strconv.Atoi(arr[3])
 				objType := objects.Type(objTypeI)
 				if (objType & objects.CIRCLE) > 0 {
-					beatMap.Circles++
+					beatmap.Circles++
 					time = arr[2]
 				} else if (objType & objects.SPINNER) > 0 {
-					beatMap.Spinners++
+					beatmap.Spinners++
 					time = arr[5]
 				} else if (objType & objects.SLIDER) > 0 {
-					beatMap.Sliders++
+					beatmap.Sliders++
 					time = arr[2]
 				} else if (objType & objects.LONGNOTE) > 0 {
-					beatMap.Sliders++
+					beatmap.Sliders++
 					time = strings.Split(arr[5], ":")[0]
 				}
 				timeI, _ := strconv.Atoi(time)
 
-				beatMap.Length = max(beatMap.Length, timeI)
+				beatmap.Length = max(beatmap.Length, timeI)
 
-				parseHitObjects(arr, beatMap)
+				parseHitObjects(arr, beatmap)
 			}
 		}
 	}
 
-	beatMap.FinalizePoints()
+	beatmap.FinalizePoints()
 
-	if beatMap.Title+beatMap.Artist+beatMap.Creator == "" || counter == 0 {
+	if beatmap.Title+beatmap.Artist+beatmap.Creator == "" || counter == 0 {
 		return nil, errors.New("corrupted file")
 	}
 
-	slices.SortStableFunc(beatMap.HitObjects, func(a, b objects.IHitObject) int {
+	slices.SortStableFunc(beatmap.HitObjects, func(a, b objects.IHitObject) int {
 		return cmp.Compare(a.GetStartTime(), b.GetStartTime())
 	})
 
@@ -233,7 +234,7 @@ func ParseFromReader(reader io.Reader) (*BeatMap, error) {
 	comboSetHax := 0
 	forceNewCombo := false
 
-	for _, iO := range beatMap.HitObjects {
+	for _, iO := range beatmap.HitObjects {
 		if iO.GetType() == objects.SPINNER {
 			forceNewCombo = true
 		} else if iO.IsNewCombo() || forceNewCombo {
@@ -254,11 +255,11 @@ func ParseFromReader(reader io.Reader) (*BeatMap, error) {
 		num++
 	}
 
-	for _, obj := range beatMap.HitObjects {
-		obj.SetTiming(beatMap.Timings)
+	for _, obj := range beatmap.HitObjects {
+		obj.SetTiming(beatmap.Timings)
 	}
 
-	calculateStackLeniency(beatMap)
+	calculateStackLeniency(beatmap)
 
-	return beatMap, nil
+	return beatmap, nil
 }

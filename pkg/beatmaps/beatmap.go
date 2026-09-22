@@ -1,15 +1,16 @@
 package beatmaps
 
 import (
-	"github.com/Lekuruu/gosu/pkg/beatmaps/difficulty"
-	"github.com/Lekuruu/gosu/pkg/beatmaps/objects"
-	"github.com/Lekuruu/gosu/pkg/beatmaps/timing"
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/Lekuruu/gosu/pkg/beatmaps/difficulty"
+	"github.com/Lekuruu/gosu/pkg/beatmaps/objects"
+	"github.com/Lekuruu/gosu/pkg/beatmaps/timing"
 )
 
-type BeatMap struct {
+type Beatmap struct {
 	FileVersion int
 
 	Artist        string
@@ -56,8 +57,8 @@ type BeatMap struct {
 	arSpecified bool
 }
 
-func NewBeatMap() *BeatMap {
-	return &BeatMap{
+func NewBeatmap() *Beatmap {
+	return &Beatmap{
 		Timings:       timing.NewTimings(),
 		StackLeniency: 0.7,
 		Difficulty:    difficulty.NewDifficulty(5, 5, 5, 5),
@@ -67,19 +68,19 @@ func NewBeatMap() *BeatMap {
 	}
 }
 
-func (beatMap *BeatMap) ParsePoint(point string) {
+func (beatmap *Beatmap) ParsePoint(point string) {
 	line := strings.Split(point, ",")
 	pointTime, _ := strconv.ParseInt(line[0], 10, 64)
 	bpm, _ := strconv.ParseFloat(line[1], 64)
 
 	if !math.IsNaN(bpm) && bpm >= 0 {
 		rBPM := 60000 / bpm
-		beatMap.MinBPM = min(beatMap.MinBPM, rBPM)
-		beatMap.MaxBPM = max(beatMap.MaxBPM, rBPM)
+		beatmap.MinBPM = min(beatmap.MinBPM, rBPM)
+		beatmap.MaxBPM = max(beatmap.MaxBPM, rBPM)
 	}
 
 	signature := 4
-	sampleSet := 0 //beatMap.Timings.LastSet
+	sampleSet := 0 //beatmap.Timings.LastSet
 	sampleIndex := 1
 	sampleVolume := 1.0
 	inherited := false
@@ -117,9 +118,9 @@ func (beatMap *BeatMap) ParsePoint(point string) {
 		omitFirstBarLine = (ki & 8) > 0
 	}
 
-	beatMap.Timings.AddPoint(float64(pointTime), bpm, sampleSet, sampleIndex, sampleVolume, signature, inherited, kiai, omitFirstBarLine)
+	beatmap.Timings.AddPoint(float64(pointTime), bpm, sampleSet, sampleIndex, sampleVolume, signature, inherited, kiai, omitFirstBarLine)
 }
 
-func (beatMap *BeatMap) FinalizePoints() {
-	beatMap.Timings.FinalizePoints()
+func (beatmap *Beatmap) FinalizePoints() {
+	beatmap.Timings.FinalizePoints()
 }

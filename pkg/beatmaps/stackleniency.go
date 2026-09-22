@@ -1,12 +1,13 @@
 package beatmaps
 
 import (
+	"math"
+
 	"github.com/Lekuruu/gosu/pkg/beatmaps/difficulty"
 	"github.com/Lekuruu/gosu/pkg/beatmaps/objects"
-	"math"
 )
 
-//Original code by: https://github.com/ppy/osu/blob/master/osu.Game.Rulesets.Osu/Beatmaps/OsuBeatmapProcessor.cs
+// Original code by: https://github.com/ppy/osu/blob/master/osu.Game.Rulesets.Osu/Beatmaps/OsuBeatmapProcessor.cs
 
 const stackDistance = 3.0
 
@@ -20,7 +21,7 @@ func isSlider(obj objects.IHitObject) bool {
 	return ok1
 }
 
-func calculateStackLeniency(b *BeatMap) {
+func calculateStackLeniency(b *Beatmap) {
 	diffNM := difficulty.NewDifficulty(b.Difficulty.GetHP(), b.Difficulty.GetCS(), b.Difficulty.GetOD(), b.Difficulty.GetAR())
 	diffEZ := difficulty.NewDifficulty(b.Difficulty.GetHP(), b.Difficulty.GetCS(), b.Difficulty.GetOD(), b.Difficulty.GetAR())
 	diffHR := difficulty.NewDifficulty(b.Difficulty.GetHP(), b.Difficulty.GetCS(), b.Difficulty.GetOD(), b.Difficulty.GetAR())
