@@ -57,7 +57,7 @@ func parseMetadata(line []string, beatmap *Beatmap) {
 		beatmap.ArtistUnicode = line[1]
 	case "Creator":
 		beatmap.Creator = line[1]
-	case "FileVersion":
+	case "Version":
 		beatmap.Version = line[1]
 	case "Source":
 		beatmap.Source = line[1]
