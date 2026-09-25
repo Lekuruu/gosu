@@ -20,7 +20,7 @@ func NewSpinner(data []string) *Spinner {
 	return spinner
 }
 
-func (spinner *Spinner) SetTiming(timings *timing.Timings) {
+func (spinner *Spinner) SetTiming(timings *timing.Timings, _ int) {
 	spinner.Timings = timings
 }
 

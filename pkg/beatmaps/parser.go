@@ -255,7 +255,7 @@ func ParseFromReader(reader io.Reader) (*Beatmap, error) {
 	}
 
 	for _, obj := range beatmap.HitObjects {
-		obj.SetTiming(beatmap.Timings)
+		obj.SetTiming(beatmap.Timings, beatmap.FileVersion)
 	}
 
 	calculateStackLeniency(beatmap)

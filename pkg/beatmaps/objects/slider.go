@@ -16,8 +16,8 @@ import (
 )
 
 const (
-	maxPathLength           = 100_000_000
-	maxRepeats              = 10_000
+	maxPathLength           = 100_000_000 // Sanity limits, XNOR reaches 10M pixel length so 100M should be enough
+	maxRepeats              = 10_000      // Same limit as osu!
 	maxSliderTicksPerRepeat = 32_768
 )
 
@@ -72,7 +72,7 @@ func NewSlider(data []string) *Slider {
 		return nil
 	}
 	slider.PixelLength = min(slider.PixelLength, maxPathLength)
-	slider.RepeatCount = min(slider.RepeatCount, maxRepeats)
+	slider.RepeatCount = min(slider.RepeatCount, maxRepeats) // The same limit as in lazer
 
 	slider.multiCurve = slider.parseCurve(data[5])
 	if slider.multiCurve == nil {
@@ -146,7 +146,8 @@ func (slider *Slider) parseCurve(curveData string) *curves.MultiCurve {
 		x, _ := strconv.ParseFloat(xValue, 32)
 		y, _ := strconv.ParseFloat(yValue, 32)
 		point := vector.NewVec2f(float32(x), float32(y))
-		if pointCount > 0 || point != slider.StartPosRaw {
+
+		if pointCount > 0 || point != slider.StartPosRaw { // skip the first point if it's the same as start position.
 			curveDef.Points = append(curveDef.Points, point)
 		}
 		pointCount++
@@ -162,11 +163,14 @@ func (slider *Slider) parseCurve(curveData string) *curves.MultiCurve {
 	}
 
 	if len(curveDef.Points) > 1 || len(curveDefs) == 0 {
+		// Lazer's multi-type slider has 1 point line
 		if curveDef.CurveType < 0 {
+			// osu! uses catmull if there's no curve type
 			curveDef.CurveType = curves.CCatmull
 		}
 		curveDefs = append(curveDefs, curveDef)
 	}
+
 	for _, def := range curveDefs {
 		if def.CurveType != curves.CBezier {
 			continue
@@ -179,6 +183,7 @@ func (slider *Slider) parseCurve(curveData string) *curves.MultiCurve {
 			previous = point
 		}
 		if controlDistance >= 2*maxPathLength {
+			// Skip sliders which are too computationally expensive
 			return nil
 		}
 	}
@@ -199,7 +204,7 @@ func parseCurveType(value string) curves.CType {
 		return curves.CBezier
 	case "C":
 		return curves.CCatmull
-	default:
+	default: // It's a point
 		return -1
 	}
 }
@@ -234,7 +239,7 @@ func (slider *Slider) PositionAt(time float64) vector.Vector2f {
 	return slider.multiCurve.PointAt(float32(progress))
 }
 
-func (slider *Slider) SetTiming(timings *timing.Timings) {
+func (slider *Slider) SetTiming(timings *timing.Timings, beatmapVersion int) {
 	slider.Timings = timings
 	slider.TPoint = timings.GetPointAt(slider.StartTime)
 
@@ -250,10 +255,14 @@ func (slider *Slider) SetTiming(timings *timing.Timings) {
 
 	minDistanceFromEnd := velocity * 0.01
 	tickDistance := slider.Timings.GetTickDistance(slider.TPoint)
+	if beatmapVersion < 8 {
+		tickDistance = slider.Timings.GetScoringDistance()
+	}
 
 	if slider.multiCurve.GetLength() > 0 && tickDistance > slider.PixelLength {
 		tickDistance = slider.PixelLength
 	}
+	// Sanity limit to 32768 ticks per repeat
 	if cLength/tickDistance > maxSliderTicksPerRepeat {
 		tickDistance = cLength / maxSliderTicksPerRepeat
 	}
@@ -263,6 +272,7 @@ func (slider *Slider) SetTiming(timings *timing.Timings) {
 		reversed := span%2 == 1
 
 		// skip ticks if timingPoint has NaN beatLength
+		// NaN sv acts like 1.0x sv, but doesn't create slider ticks
 		for d := tickDistance; d <= cLength && !nanTimingPoint; d += tickDistance {
 			if d >= cLength-minDistanceFromEnd {
 				break

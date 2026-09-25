@@ -9,7 +9,7 @@ import (
 
 type IHitObject interface {
 	Update(time float64) bool
-	SetTiming(timings *timing.Timings)
+	SetTiming(timings *timing.Timings, beatmapVersion int)
 	SetDifficulty(difficulty *difficulty.Difficulty)
 
 	GetStartTime() float64
@@ -82,7 +82,7 @@ type HitObject struct {
 
 func (hitObject *HitObject) Update(_ float64) bool { return true }
 
-func (hitObject *HitObject) SetTiming(_ *timing.Timings) {}
+func (hitObject *HitObject) SetTiming(_ *timing.Timings, _ int) {}
 
 func (hitObject *HitObject) UpdateStacking() {}
 
