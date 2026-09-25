@@ -73,21 +73,12 @@ func NewSlider(data []string) *Slider {
 	slider.PixelLength = min(slider.PixelLength, maxPathLength)
 	slider.RepeatCount = min(slider.RepeatCount, maxRepeats)
 
-	list := strings.Split(data[5], "|")
-	points := []vector.Vector2f{slider.StartPosRaw}
-
-	for i := 1; i < len(list); i++ {
-		list2 := strings.Split(list[i], ":")
-		x, _ := strconv.ParseFloat(list2[0], 32)
-		y, _ := strconv.ParseFloat(list2[1], 32)
-		points = append(points, vector.NewVec2f(float32(x), float32(y)))
+	slider.multiCurve = slider.parseCurve(data[5])
+	if slider.multiCurve == nil {
+		return nil
 	}
-
 	if slider.PixelLength == 0 {
-		slider.multiCurve = curves.NewMultiCurve(list[0], points)
 		slider.PixelLength = float64(slider.multiCurve.GetLength())
-	} else {
-		slider.multiCurve = curves.NewMultiCurveT(list[0], points, slider.PixelLength)
 	}
 
 	slider.EndTime = slider.StartTime
@@ -127,6 +118,89 @@ func NewSlider(data []string) *Slider {
 	}
 
 	return slider
+}
+
+func (slider *Slider) parseCurve(curveData string) *curves.MultiCurve {
+	curveDef := curves.CurveDef{
+		CurveType: -1,
+		Points:    []vector.Vector2f{slider.StartPosRaw},
+	}
+	curveDefs := make([]curves.CurveDef, 0, 1)
+	nextType := curves.CType(-1)
+	pointCount := 0
+
+	for part := range strings.SplitSeq(curveData, "|") {
+		xValue, yValue, isPoint := strings.Cut(part, ":")
+		if !isPoint {
+			if curveType := parseCurveType(part); curveType >= 0 {
+				if curveDef.CurveType < 0 {
+					curveDef.CurveType = curveType
+				} else {
+					nextType = curveType
+				}
+			}
+			continue
+		}
+
+		x, _ := strconv.ParseFloat(xValue, 32)
+		y, _ := strconv.ParseFloat(yValue, 32)
+		point := vector.NewVec2f(float32(x), float32(y))
+		if pointCount > 0 || point != slider.StartPosRaw {
+			curveDef.Points = append(curveDef.Points, point)
+		}
+		pointCount++
+
+		if nextType >= 0 {
+			curveDefs = append(curveDefs, curveDef)
+			curveDef = curves.CurveDef{
+				CurveType: nextType,
+				Points:    []vector.Vector2f{point},
+			}
+			nextType = -1
+		}
+	}
+
+	if len(curveDef.Points) > 1 || len(curveDefs) == 0 {
+		if curveDef.CurveType < 0 {
+			curveDef.CurveType = curves.CCatmull
+		}
+		curveDefs = append(curveDefs, curveDef)
+	}
+	for _, def := range curveDefs {
+		if def.CurveType != curves.CBezier {
+			continue
+		}
+
+		controlDistance := float32(0)
+		previous := def.Points[0]
+		for _, point := range def.Points[1:] {
+			controlDistance += point.Dst(previous)
+			previous = point
+		}
+		if controlDistance >= 2*maxPathLength {
+			return nil
+		}
+	}
+
+	if slider.PixelLength == 0 {
+		return curves.NewMultiCurve(curveDefs)
+	}
+	return curves.NewMultiCurveT(curveDefs, slider.PixelLength)
+}
+
+func parseCurveType(value string) curves.CType {
+	switch value {
+	case "P":
+		return curves.CCirArc
+	case "L":
+		return curves.CLine
+	case "B":
+		return curves.CBezier
+	case "C":
+		return curves.CCatmull
+	default:
+		return -1
+	}
 }
 
 func (slider *Slider) GetEdgeSounds() []SliderEdgeSound {

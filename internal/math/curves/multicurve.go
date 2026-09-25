@@ -1,12 +1,27 @@
 package curves
 
 import (
+	"sort"
+
 	"github.com/Lekuruu/gosu/internal/math/mutils"
 	"github.com/Lekuruu/gosu/internal/math/vector"
-	"sort"
 )
 
 const minPartWidth = 0.0001
+
+type CType int
+
+const (
+	CLine CType = iota
+	CBezier
+	CCirArc
+	CCatmull
+)
+
+type CurveDef struct {
+	CurveType CType
+	Points    []vector.Vector2f
+}
 
 type MultiCurve struct {
 	sections   []float32
@@ -15,18 +30,20 @@ type MultiCurve struct {
 	firstPoint vector.Vector2f
 }
 
-func NewMultiCurve(typ string, points []vector.Vector2f) *MultiCurve {
+func NewMultiCurve(curveDefs []CurveDef) *MultiCurve {
 	lines := make([]Linear, 0)
 
-	switch typ {
-	case "P":
-		lines = processPerfect(points)
-	case "L":
-		lines = processLinear(points)
-	case "B":
-		lines = processBezier(points)
-	case "C":
-		lines = processCatmull(points)
+	for _, def := range curveDefs {
+		switch def.CurveType {
+		case CCirArc:
+			lines = append(lines, processPerfect(def.Points)...)
+		case CLine:
+			lines = append(lines, processLinear(def.Points)...)
+		case CBezier:
+			lines = append(lines, processBezier(def.Points)...)
+		case CCatmull:
+			lines = append(lines, processCatmull(def.Points)...)
+		}
 	}
 
 	length := float32(0.0)
@@ -35,7 +52,7 @@ func NewMultiCurve(typ string, points []vector.Vector2f) *MultiCurve {
 		length += l.GetLength()
 	}
 
-	firstPoint := points[0]
+	firstPoint := curveDefs[0].Points[0]
 
 	sections := make([]float32, len(lines)+1)
 	sections[0] = 0.0
@@ -49,8 +66,8 @@ func NewMultiCurve(typ string, points []vector.Vector2f) *MultiCurve {
 	return &MultiCurve{sections, lines, length, firstPoint}
 }
 
-func NewMultiCurveT(typ string, points []vector.Vector2f, desiredLength float64) *MultiCurve {
-	mCurve := NewMultiCurve(typ, points)
+func NewMultiCurveT(curveDefs []CurveDef, desiredLength float64) *MultiCurve {
+	mCurve := NewMultiCurve(curveDefs)
 
 	if mCurve.length > 0 {
 		diff := float64(mCurve.length) - desiredLength
