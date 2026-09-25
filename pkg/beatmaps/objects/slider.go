@@ -324,7 +324,7 @@ func (slider *Slider) SetTiming(timings *timing.Timings, beatmapVersion int) {
 
 			scoringDistance += float64(distance)
 
-			for scoringDistance >= tickDistance && !skipTick {
+			for scoringDistance >= tickDistance && !skipTick && tickDistance != 0 {
 				scoringLengthTotal += tickDistance
 				scoringDistance -= tickDistance
 				distanceToEnd -= tickDistance
