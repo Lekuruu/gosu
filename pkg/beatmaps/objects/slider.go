@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	maxPathLength = 100_000_000
-	maxRepeats    = 10_000
+	maxPathLength           = 100_000_000
+	maxRepeats              = 10_000
+	maxSliderTicksPerRepeat = 32_768
 )
 
 type TickPoint struct {
@@ -252,6 +253,9 @@ func (slider *Slider) SetTiming(timings *timing.Timings) {
 
 	if slider.multiCurve.GetLength() > 0 && tickDistance > slider.PixelLength {
 		tickDistance = slider.PixelLength
+	}
+	if cLength/tickDistance > maxSliderTicksPerRepeat {
+		tickDistance = cLength / maxSliderTicksPerRepeat
 	}
 
 	for span := 0; span < int(slider.RepeatCount); span++ {
