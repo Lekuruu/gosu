@@ -121,6 +121,10 @@ func NewSlider(data []string) *Slider {
 	return slider
 }
 
+func (slider *Slider) GetLength() float32 {
+	return slider.multiCurve.GetLength()
+}
+
 func (slider *Slider) parseCurve(curveData string) *curves.MultiCurve {
 	curveDef := curves.CurveDef{
 		CurveType: -1,
