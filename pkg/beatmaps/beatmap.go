@@ -1,3 +1,5 @@
+// Package beatmaps parses osu! beatmap files and exposes their metadata,
+// timing points, difficulty settings, and hit objects.
 package beatmaps
 
 import (
@@ -12,6 +14,7 @@ import (
 
 type Beatmap struct {
 	FileVersion int
+	Mode        int
 
 	Artist        string
 	ArtistUnicode string
@@ -20,19 +23,16 @@ type Beatmap struct {
 	TitleUnicode string
 
 	Version string
-
 	Creator string
-
-	Source string
-
-	Tags string
-
-	Mode int
+	Source  string
+	Tags    string
 
 	SliderMultiplier float64
 	StackLeniency    float64
 
 	Difficulty *difficulty.Difficulty
+
+	// TODO: Storyboard events
 
 	Audio string
 	Bg    string

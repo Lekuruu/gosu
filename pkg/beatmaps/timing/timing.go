@@ -144,13 +144,11 @@ func (tim *Timings) GetSliderTimeP(point ControlPoint, pixelLength float64) floa
 
 func (tim *Timings) GetVelocity(point ControlPoint) float64 {
 	velocity := tim.GetScoringDistance() * tim.TickRate
-
 	beatLength := point.GetBeatLength()
 
 	if beatLength >= 0 {
 		velocity *= 1000.0 / beatLength
 	}
-
 	return velocity
 }
 

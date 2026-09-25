@@ -17,6 +17,127 @@ import (
 
 const bufferSize = 10 * 1024 * 1024
 
+func ParseFromByte(data []byte) (*Beatmap, error) {
+	return ParseFromReader(bytes.NewReader(data))
+}
+
+func ParseFromReader(reader io.Reader) (*Beatmap, error) {
+	beatmap := NewBeatmap()
+	scanner := files.NewScannerBuf(reader, bufferSize)
+
+	var timingPointsCount int
+	var currentSection string
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if strings.HasPrefix(line, "osu file format v") {
+			trim := strings.TrimPrefix(line, "osu file format v")
+			beatmap.FileVersion, _ = strconv.Atoi(trim)
+		}
+
+		section := getSection(line)
+		if section != "" {
+			currentSection = section
+			continue
+		}
+
+		switch currentSection {
+		case "General":
+			if arr := tokenizeN(line, ":", 2); len(arr) > 1 {
+				parseGeneral(arr, beatmap)
+			}
+		case "Metadata":
+			if arr := tokenizeN(line, ":", 2); len(arr) > 1 {
+				parseMetadata(arr, beatmap)
+			}
+		case "Difficulty":
+			if arr := tokenizeN(line, ":", 2); len(arr) > 1 {
+				parseDifficulty(arr, beatmap)
+			}
+		case "Events":
+			if arr := tokenize(line, ","); len(arr) > 1 {
+				parseEvents(arr, beatmap)
+			}
+		case "TimingPoints":
+			if arr := tokenize(line, ","); len(arr) > 1 {
+				beatmap.ParsePoint(line)
+				timingPointsCount++
+			}
+		case "HitObjects":
+			if arr := tokenize(line, ","); arr != nil {
+				var time string
+
+				objTypeI, _ := strconv.Atoi(arr[3])
+				objType := objects.Type(objTypeI)
+				if (objType & objects.CIRCLE) > 0 {
+					beatmap.Circles++
+					time = arr[2]
+				} else if (objType & objects.SPINNER) > 0 {
+					beatmap.Spinners++
+					time = arr[5]
+				} else if (objType & objects.SLIDER) > 0 {
+					beatmap.Sliders++
+					time = arr[2]
+				} else if (objType & objects.LONGNOTE) > 0 {
+					beatmap.Sliders++
+					time = strings.Split(arr[5], ":")[0]
+				}
+				timeI, _ := strconv.Atoi(time)
+
+				beatmap.Length = max(beatmap.Length, timeI)
+
+				parseHitObjects(arr, beatmap)
+			}
+		}
+	}
+
+	beatmap.FinalizePoints()
+
+	if beatmap.Title+beatmap.Artist+beatmap.Creator == "" || timingPointsCount == 0 {
+		return nil, errors.New("corrupted file")
+	}
+
+	slices.SortStableFunc(beatmap.HitObjects, func(a, b objects.IHitObject) int {
+		return cmp.Compare(a.GetStartTime(), b.GetStartTime())
+	})
+
+	num := 0
+	comboNumber := 1
+	comboSet := 0
+	comboSetHax := 0
+	forceNewCombo := false
+
+	for _, iO := range beatmap.HitObjects {
+		if iO.GetType() == objects.SPINNER {
+			forceNewCombo = true
+		} else if iO.IsNewCombo() || forceNewCombo {
+			iO.SetNewCombo(true)
+			comboNumber = 1
+			comboSet++
+			comboSetHax += int(iO.GetColorOffset()) + 1
+
+			forceNewCombo = false
+		}
+
+		iO.SetID(num)
+		iO.SetComboNumber(comboNumber)
+		iO.SetComboSet(comboSet)
+		iO.SetComboSetHax(comboSetHax)
+
+		comboNumber++
+		num++
+	}
+
+	for _, obj := range beatmap.HitObjects {
+		obj.SetTiming(beatmap.Timings, beatmap.FileVersion)
+	}
+
+	calculateStackLeniency(beatmap)
+
+	return beatmap, nil
+}
+
 func parseGeneral(line []string, beatmap *Beatmap) bool {
 	switch line[0] {
 	case "Mode":
@@ -138,127 +259,4 @@ func getSection(line string) string {
 	}
 
 	return ""
-}
-
-func ParseFromByte(data []byte) (*Beatmap, error) {
-	return ParseFromReader(bytes.NewReader(data))
-}
-
-func ParseFromReader(reader io.Reader) (*Beatmap, error) {
-	beatmap := NewBeatmap()
-
-	scanner := files.NewScannerBuf(reader, bufferSize)
-
-	var currentSection string
-
-	counter := 0
-
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		if strings.HasPrefix(line, "osu file format v") {
-			trim := strings.TrimPrefix(line, "osu file format v")
-			beatmap.FileVersion, _ = strconv.Atoi(trim)
-		}
-
-		section := getSection(line)
-		if section != "" {
-			currentSection = section
-			continue
-		}
-
-		switch currentSection {
-		case "General":
-			if arr := tokenizeN(line, ":", 2); len(arr) > 1 {
-				parseGeneral(arr, beatmap)
-			}
-		case "Metadata":
-			if arr := tokenizeN(line, ":", 2); len(arr) > 1 {
-				parseMetadata(arr, beatmap)
-			}
-		case "Difficulty":
-			if arr := tokenizeN(line, ":", 2); len(arr) > 1 {
-				parseDifficulty(arr, beatmap)
-			}
-		case "Events":
-			if arr := tokenize(line, ","); len(arr) > 1 {
-				parseEvents(arr, beatmap)
-			}
-		case "TimingPoints":
-			if arr := tokenize(line, ","); len(arr) > 1 {
-				beatmap.ParsePoint(line)
-				counter++
-			}
-		case "HitObjects":
-			if arr := tokenize(line, ","); arr != nil {
-				var time string
-
-				objTypeI, _ := strconv.Atoi(arr[3])
-				objType := objects.Type(objTypeI)
-				if (objType & objects.CIRCLE) > 0 {
-					beatmap.Circles++
-					time = arr[2]
-				} else if (objType & objects.SPINNER) > 0 {
-					beatmap.Spinners++
-					time = arr[5]
-				} else if (objType & objects.SLIDER) > 0 {
-					beatmap.Sliders++
-					time = arr[2]
-				} else if (objType & objects.LONGNOTE) > 0 {
-					beatmap.Sliders++
-					time = strings.Split(arr[5], ":")[0]
-				}
-				timeI, _ := strconv.Atoi(time)
-
-				beatmap.Length = max(beatmap.Length, timeI)
-
-				parseHitObjects(arr, beatmap)
-			}
-		}
-	}
-
-	beatmap.FinalizePoints()
-
-	if beatmap.Title+beatmap.Artist+beatmap.Creator == "" || counter == 0 {
-		return nil, errors.New("corrupted file")
-	}
-
-	slices.SortStableFunc(beatmap.HitObjects, func(a, b objects.IHitObject) int {
-		return cmp.Compare(a.GetStartTime(), b.GetStartTime())
-	})
-
-	num := 0
-	comboNumber := 1
-	comboSet := 0
-	comboSetHax := 0
-	forceNewCombo := false
-
-	for _, iO := range beatmap.HitObjects {
-		if iO.GetType() == objects.SPINNER {
-			forceNewCombo = true
-		} else if iO.IsNewCombo() || forceNewCombo {
-			iO.SetNewCombo(true)
-			comboNumber = 1
-			comboSet++
-			comboSetHax += int(iO.GetColorOffset()) + 1
-
-			forceNewCombo = false
-		}
-
-		iO.SetID(num)
-		iO.SetComboNumber(comboNumber)
-		iO.SetComboSet(comboSet)
-		iO.SetComboSetHax(comboSetHax)
-
-		comboNumber++
-		num++
-	}
-
-	for _, obj := range beatmap.HitObjects {
-		obj.SetTiming(beatmap.Timings, beatmap.FileVersion)
-	}
-
-	calculateStackLeniency(beatmap)
-
-	return beatmap, nil
 }
