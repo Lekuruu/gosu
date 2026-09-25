@@ -1,6 +1,8 @@
 package curves
 
 import (
+	"math"
+
 	"github.com/Lekuruu/gosu/internal/math/vector"
 )
 
@@ -11,12 +13,20 @@ func ApproximateCircularArc(pt1, pt2, pt3 vector.Vector2f, detail float32) []Lin
 		return []Linear{NewLinear(pt1, pt2), NewLinear(pt2, pt3)}
 	}
 
-	segments := int(arc.r * arc.totalAngle * detail)
+	segments := int(math.Abs((arc.tFinalS-arc.tInitialS)*float64(arc.rS)) * float64(detail))
 	lines := make([]Linear, segments)
 
-	for i := 0; i < segments; i++ {
-		lines[i] = NewLinear(arc.PointAt(float32(i)/float32(segments)), arc.PointAt(float32(i+1)/float32(segments)))
+	if segments == 0 {
+		return lines
 	}
+
+	previous := pt1
+	for i := 1; i < segments; i++ {
+		point := arc.PointAtS(float64(i) / float64(segments))
+		lines[i-1] = NewLinear(previous, point)
+		previous = point
+	}
+	lines[segments-1] = NewLinear(previous, pt3)
 
 	return lines
 }

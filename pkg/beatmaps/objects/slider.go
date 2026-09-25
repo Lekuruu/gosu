@@ -4,6 +4,7 @@ import (
 	"cmp"
 	"math"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -26,6 +27,12 @@ type TickPoint struct {
 	IsReverse bool
 }
 
+type pathLine struct {
+	time1 int64
+	time2 int64
+	line  curves.Linear
+}
+
 type SliderEdgeSound struct {
 	Sound       audio.HitSound
 	SampleSet   int
@@ -44,6 +51,7 @@ type Slider struct {
 	RepeatCount int64
 
 	scorePoints []TickPoint
+	scorePath   []pathLine
 	edgeSounds  []SliderEdgeSound
 
 	diff *difficulty.Difficulty
@@ -232,15 +240,20 @@ func (slider *Slider) PositionAt(time float64) vector.Vector2f {
 	if slider.IsRetarded() {
 		return slider.StartPosRaw
 	}
-	t1 := mutils.ClampF64(time, slider.StartTime, slider.EndTime)
 
-	progress := (t1 - slider.StartTime) / slider.spanDuration
-	progress = math.Mod(progress, 2)
-	if progress >= 1 {
-		progress = 2 - progress
+	index := sort.Search(len(slider.scorePath), func(i int) bool {
+		return float64(slider.scorePath[i].time2) >= time
+	})
+
+	pLine := slider.scorePath[max(0, min(index, len(slider.scorePath)-1))]
+
+	clamped := mutils.ClampF64(time, float64(pLine.time1), float64(pLine.time2))
+
+	if pLine.time2 == pLine.time1 {
+		return pLine.line.Point2
 	}
 
-	return slider.multiCurve.PointAt(float32(progress))
+	return pLine.line.PointAt(float32(clamped-float64(pLine.time1)) / float32(pLine.time2-pLine.time1))
 }
 
 func (slider *Slider) SetTiming(timings *timing.Timings, beatmapVersion int) {
@@ -249,13 +262,13 @@ func (slider *Slider) SetTiming(timings *timing.Timings, beatmapVersion int) {
 
 	nanTimingPoint := math.IsNaN(slider.TPoint.GetRawBeatLength())
 
+	lines := slider.multiCurve.GetLines()
+
+	startTime := slider.StartTime
+
 	velocity := slider.Timings.GetVelocity(slider.TPoint)
 
 	cLength := float64(slider.multiCurve.GetLength())
-
-	slider.spanDuration = cLength * 1000 / velocity
-
-	slider.EndTime = slider.StartTime + cLength*1000*float64(slider.RepeatCount)/velocity
 
 	minDistanceFromEnd := velocity * 0.01
 	tickDistance := slider.Timings.GetTickDistance(slider.TPoint)
@@ -271,32 +284,69 @@ func (slider *Slider) SetTiming(timings *timing.Timings, beatmapVersion int) {
 		tickDistance = cLength / maxSliderTicksPerRepeat
 	}
 
-	for span := 0; span < int(slider.RepeatCount); span++ {
-		spanStartTime := slider.StartTime + float64(span)*slider.spanDuration
-		reversed := span%2 == 1
+	scoringLengthTotal := 0.0
+	scoringDistance := 0.0
 
-		// skip ticks if timingPoint has NaN beatLength
-		// NaN sv acts like 1.0x sv, but doesn't create slider ticks
-		for d := tickDistance; d <= cLength && !nanTimingPoint; d += tickDistance {
-			if d >= cLength-minDistanceFromEnd {
-				break
-			}
+	// Stable-like score point processing, ugly AF.
+	for span := range slider.RepeatCount {
+		distanceToEnd := float64(slider.multiCurve.GetLength())
+		skipTick := nanTimingPoint // NaN SV acts like 1.0x SV, but doesn't spawn slider ticks
 
-			// Always generate ticks from the start of the path rather than the span to ensure
-			// that ticks in repeat spans are positioned identically to those in non-repeat spans
-			timeProgress := d / cLength
-			if reversed {
-				timeProgress = 1 - timeProgress
-			}
+		reverse := span%2 == 1
 
-			slider.scorePoints = append(slider.scorePoints, TickPoint{
-				Time: spanStartTime + timeProgress*slider.spanDuration,
-			})
+		start := 0
+		end := len(lines)
+		direction := 1
+
+		if reverse {
+			start = len(lines) - 1
+			end = -1
+			direction = -1
 		}
 
-		if span < int(slider.RepeatCount)-1 {
+		for j := start; j != end; j += direction {
+			line := lines[j]
+
+			p1, p2 := line.Point1, line.Point2
+
+			if reverse {
+				p1, p2 = p2, p1
+			}
+
+			distance := float32(line.GetCustomLength())
+
+			progress := 1000.0 * float64(distance) / velocity
+
+			slider.scorePath = append(slider.scorePath, pathLine{time1: int64(startTime), time2: int64(startTime + progress), line: curves.NewLinear(p1, p2)})
+
+			startTime += progress
+			slider.EndTime = math.Floor(startTime)
+
+			scoringDistance += float64(distance)
+
+			for scoringDistance >= tickDistance && !skipTick {
+				scoringLengthTotal += tickDistance
+				scoringDistance -= tickDistance
+				distanceToEnd -= tickDistance
+
+				skipTick = distanceToEnd <= minDistanceFromEnd
+				if skipTick {
+					break
+				}
+
+				scoreTime := slider.StartTime + math.Floor(float64(float32(scoringLengthTotal))/velocity*1000)
+
+				slider.scorePoints = append(slider.scorePoints, TickPoint{Time: scoreTime})
+			}
+		}
+
+		scoringLengthTotal += scoringDistance
+
+		scoreTime := slider.StartTime + math.Floor(float64(float32(scoringLengthTotal))/velocity*1000)
+
+		if span < slider.RepeatCount-1 {
 			slider.scorePoints = append(slider.scorePoints, TickPoint{
-				Time:      spanStartTime + slider.spanDuration,
+				Time:      scoreTime,
 				IsReverse: true,
 			})
 		} else {
@@ -304,7 +354,16 @@ func (slider *Slider) SetTiming(timings *timing.Timings, beatmapVersion int) {
 				Time: max(slider.StartTime+(slider.EndTime-slider.StartTime)/2, slider.EndTime-36),
 			})
 		}
+
+		if skipTick {
+			scoringDistance = 0
+		} else {
+			scoringLengthTotal -= tickDistance - scoringDistance
+			scoringDistance = tickDistance - scoringDistance
+		}
 	}
+
+	slider.spanDuration = (slider.EndTime - slider.StartTime) / float64(slider.RepeatCount)
 
 	slices.SortFunc(slider.scorePoints, func(a, b TickPoint) int {
 		return cmp.Compare(a.Time, b.Time)
