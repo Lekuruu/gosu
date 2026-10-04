@@ -152,3 +152,31 @@ func (beatmap *Beatmap) MaxBPM() float64 {
 	}
 	return maximum
 }
+
+// TotalLength returns the beatmap's total length in seconds.
+func (beatmap *Beatmap) TotalLength() float64 {
+	if len(beatmap.HitObjects) <= 1 {
+		return 0
+	}
+
+	lastObject := beatmap.HitObjects[len(beatmap.HitObjects)-1]
+	return max(lastObject.GetStartTime(), 0) / 1000
+}
+
+// DrainLength returns the beatmap's drain length in seconds, i.e.
+// the time from the first hit object to the last, excluding breaks.
+func (beatmap *Beatmap) DrainLength() float64 {
+	if len(beatmap.HitObjects) <= 1 {
+		return 0
+	}
+	firstObject := beatmap.HitObjects[0]
+	lastObject := beatmap.HitObjects[len(beatmap.HitObjects)-1]
+
+	breakTime := 0.0
+	for _, pause := range beatmap.Pauses {
+		breakTime += pause.Length()
+	}
+
+	drainLength := lastObject.GetStartTime() - firstObject.GetStartTime() - breakTime
+	return max(drainLength, 0) / 1000
+}
