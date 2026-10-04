@@ -2,6 +2,7 @@ package beatmaps
 
 import (
 	"math"
+	"slices"
 
 	"github.com/Lekuruu/gosu/pkg/beatmaps/difficulty"
 	"github.com/Lekuruu/gosu/pkg/beatmaps/objects"
@@ -61,7 +62,7 @@ func processStacking(hitObjects []objects.IHitObject, version int, diff *difficu
 
 func applyNewStacking(hitObjects []objects.IHitObject, modifiers difficulty.Modifier, stackThreshold float64) {
 	extendedEndIndex := len(hitObjects) - 1
-	for i := len(hitObjects) - 1; i >= 0; i-- {
+	for i := range slices.Backward(hitObjects) {
 		stackBaseIndex := i
 
 		for n := stackBaseIndex + 1; n < len(hitObjects); n++ {
@@ -163,7 +164,7 @@ func applyNewStacking(hitObjects []objects.IHitObject, modifiers difficulty.Modi
 }
 
 func applyOldStacking(hitObjects []objects.IHitObject, modifiers difficulty.Modifier, stackThreshold float64) {
-	for i := 0; i < len(hitObjects); i++ {
+	for i := range hitObjects {
 		objectI := hitObjects[i]
 
 		startTime := objectI.GetEndTime()

@@ -31,9 +31,9 @@ func ParseFromReader(reader io.Reader) (*Beatmap, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 
-		if strings.HasPrefix(line, "osu file format v") {
-			trim := strings.TrimPrefix(line, "osu file format v")
-			beatmap.FileVersion, _ = strconv.Atoi(trim)
+		if after, ok := strings.CutPrefix(line, "osu file format v"); ok {
+			fileVersion := after
+			beatmap.FileVersion, _ = strconv.Atoi(fileVersion)
 		}
 
 		section := getSection(line)
@@ -220,7 +220,7 @@ func parseDifficulty(line []string, beatmap *Beatmap) {
 func parseEvents(line []string, beatmap *Beatmap) {
 	switch line[0] {
 	case "Background", "0":
-		beatmap.Bg = strings.Replace(line[2], "\"", "", -1)
+		beatmap.Bg = strings.ReplaceAll(line[2], "\"", "")
 	case "Break", "2":
 		beatmap.Pauses = append(beatmap.Pauses, NewPause(line))
 	}

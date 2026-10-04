@@ -172,7 +172,7 @@ func (mods Modifier) String() (s string) {
 		mods &= ^SuddenDeath
 	}
 
-	for i := 0; i < len(modsString); i++ {
+	for i := range len(modsString) {
 		activated := mods&1 == 1
 		if activated {
 			s += modsString[i]
@@ -197,7 +197,7 @@ func (mods Modifier) StringFull() (s []string) {
 		mods &= ^SuddenDeath
 	}
 
-	for i := 0; i < len(modsString); i++ {
+	for i := range len(modsString) {
 		activated := mods&1 == 1
 		if activated {
 			s = append(s, modsStringFull[i])

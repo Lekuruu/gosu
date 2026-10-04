@@ -13,11 +13,12 @@ func commonParse(data []string, hitSampleIndex int) *HitObject {
 	y, _ := strconv.ParseFloat(data[1], 32)
 	time, _ := strconv.ParseFloat(data[2], 64)
 	objType, _ := strconv.Atoi(data[3])
-
-	startPos := vector.NewVec2f(float32(x), float32(y))
-
 	sound, _ := strconv.Atoi(data[4])
 
+	startPos := vector.NewVec2f(
+		float32(x),
+		float32(y),
+	)
 	hitObject := &HitObject{
 		StartPosRaw: startPos,
 		EndPosRaw:   startPos,
