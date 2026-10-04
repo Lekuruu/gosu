@@ -3,7 +3,6 @@
 package beatmaps
 
 import (
-	"math"
 	"strconv"
 	"strings"
 
@@ -47,8 +46,7 @@ type Beatmap struct {
 	Sliders  int
 	Spinners int
 
-	MinBPM float64
-	MaxBPM float64
+	BPMDurations map[float64]int64
 
 	Timings    *timing.Timings
 	HitObjects []objects.IHitObject
@@ -62,9 +60,7 @@ func NewBeatmap() *Beatmap {
 		Timings:       timing.NewTimings(),
 		StackLeniency: 0.7,
 		Difficulty:    difficulty.NewDifficulty(5, 5, 5, 5),
-
-		MinBPM: math.Inf(0),
-		MaxBPM: 0,
+		BPMDurations:  make(map[float64]int64),
 	}
 }
 
@@ -72,12 +68,6 @@ func (beatmap *Beatmap) ParsePoint(point string) {
 	line := strings.Split(point, ",")
 	pointTime, _ := strconv.ParseFloat(line[0], 64)
 	bpm, _ := strconv.ParseFloat(line[1], 64)
-
-	if !math.IsNaN(bpm) && bpm >= 0 {
-		rBPM := 60000 / bpm
-		beatmap.MinBPM = min(beatmap.MinBPM, rBPM)
-		beatmap.MaxBPM = max(beatmap.MaxBPM, rBPM)
-	}
 
 	signature := 4
 	sampleSet := beatmap.Timings.BaseSet
@@ -123,4 +113,42 @@ func (beatmap *Beatmap) ParsePoint(point string) {
 
 func (beatmap *Beatmap) FinalizePoints() {
 	beatmap.Timings.FinalizePoints()
+	beatmap.BPMDurations = beatmap.Timings.CalculateBPMDurations(int64(beatmap.Length))
+}
+
+// CommonBPM returns the BPM which is active for the longest duration.
+func (beatmap *Beatmap) CommonBPM() float64 {
+	longestDuration := int64(-1)
+	commonBPM := 0.0
+
+	for bpm, duration := range beatmap.BPMDurations {
+		isHigher := duration > longestDuration
+		isSameButLowerBPM := duration == longestDuration && bpm < commonBPM
+
+		if isHigher || isSameButLowerBPM {
+			commonBPM = bpm
+			longestDuration = duration
+		}
+	}
+	return commonBPM
+}
+
+// MinBPM returns the lowest BPM throughout the beatmap.
+func (beatmap *Beatmap) MinBPM() float64 {
+	minimum := 0.0
+	for bpm := range beatmap.BPMDurations {
+		if minimum == 0 || bpm < minimum {
+			minimum = bpm
+		}
+	}
+	return minimum
+}
+
+// MaxBPM returns the highest BPM throughout the beatmap.
+func (beatmap *Beatmap) MaxBPM() float64 {
+	maximum := 0.0
+	for bpm := range beatmap.BPMDurations {
+		maximum = max(maximum, bpm)
+	}
+	return maximum
 }

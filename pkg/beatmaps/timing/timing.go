@@ -159,3 +159,56 @@ func (tim *Timings) GetTickDistance(point ControlPoint) float64 {
 func (tim *Timings) HasPoints() bool {
 	return len(tim.points) > 0
 }
+
+func (tim *Timings) CalculateBPMDurations(endTime int64) map[float64]int64 {
+	durations := make(map[float64]int64)
+	if endTime <= 0 {
+		return durations
+	}
+
+	// Collect all usable timing points
+	points := make([]ControlPoint, 0, len(tim.originalPoints))
+	for _, point := range tim.originalPoints {
+		beatLength := point.GetRawBeatLength()
+		isFinite := !math.IsInf(beatLength, 0) && !math.IsNaN(beatLength)
+
+		if beatLength > 0 && isFinite {
+			points = append(points, point)
+		}
+	}
+	if len(points) == 0 {
+		// No timing points available
+		return durations
+	}
+	mapEnd := float64(endTime)
+
+	for i, point := range points {
+		start := point.Time
+		if i == 0 || start < 0 {
+			start = 0
+		}
+
+		end := mapEnd
+		if i+1 < len(points) {
+			// If there's a following point, use its time as the end
+			end = min(points[i+1].Time, mapEnd)
+		}
+
+		start = min(start, mapEnd)
+		end = max(0, end)
+
+		startMillis := int64(math.Round(start))
+		endMillis := int64(math.Round(end))
+
+		if endMillis <= startMillis {
+			// Invalid end time
+			continue
+		}
+
+		// Calculate the bpm & add it to the durations map
+		bpm := 60000 / point.GetRawBeatLength()
+		durations[bpm] += endMillis - startMillis
+	}
+
+	return durations
+}
