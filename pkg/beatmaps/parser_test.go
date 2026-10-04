@@ -58,7 +58,7 @@ func TestParseFromByteParsesLargeBeatmap(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	beatmap, err := beatmaps.ParseFromByte(data)
+	beatmap, err := beatmaps.ParseFromBytes(data)
 	if err != nil {
 		t.Fatalf("ParseFromByte() error = %v", err)
 	}

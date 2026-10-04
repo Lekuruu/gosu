@@ -17,7 +17,7 @@ import (
 
 const bufferSize = 10 * 1024 * 1024
 
-func ParseFromByte(data []byte) (*Beatmap, error) {
+func ParseFromBytes(data []byte) (*Beatmap, error) {
 	return ParseFromReader(bytes.NewReader(data))
 }
 
