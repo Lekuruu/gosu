@@ -94,6 +94,9 @@ func TestParseFromReaderParsesOsuTutorial(t *testing.T) {
 	if len(beatmap.Events) != 97 {
 		t.Fatalf("len(Events) = %d, want 97", len(beatmap.Events))
 	}
+	if !beatmap.HasStoryboardElements() {
+		t.Fatalf("HasStoryboardElements() = false, expected true")
+	}
 
 	breaks := beatmap.Events.Breaks()
 	if len(breaks) != 2 {

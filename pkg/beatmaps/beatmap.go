@@ -178,3 +178,21 @@ func (beatmap *Beatmap) DrainLength() float64 {
 	drainLength := lastObject.GetStartTime() - firstObject.GetStartTime() - breakTime
 	return max(drainLength, 0) / 1000
 }
+
+// HasStoryboardElements reports whether the beatmap contains a sprite or animation event.
+func (beatmap *Beatmap) HasStoryboardElements() bool {
+	for _, event := range beatmap.Events {
+		if event == nil {
+			continue
+		}
+
+		eventType := event.Type()
+		if eventType == events.TypeSprite {
+			return true
+		}
+		if eventType == events.TypeAnimation {
+			return true
+		}
+	}
+	return false
+}
