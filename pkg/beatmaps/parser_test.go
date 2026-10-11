@@ -84,7 +84,7 @@ func TestParseFromByteParsesLargeBeatmap(t *testing.T) {
 	}
 }
 
-func TestParseFromReaderParsesOsuTutorial(t *testing.T) {
+func TestParseFromReaderParsesOldEvents(t *testing.T) {
 	file := openFixture(t, "osu-tutorial.osu")
 
 	beatmap, err := beatmaps.ParseFromReader(file)
@@ -136,6 +136,34 @@ func TestParseFromReaderParsesOsuTutorial(t *testing.T) {
 
 	if raw := beatmap.Events.Filter[*events.RawEvent](); len(raw) != 0 {
 		t.Errorf("len(raw events) = %d, want 0", len(raw))
+	}
+}
+
+func TestParseFromReaderParsesModernEvents(t *testing.T) {
+	file := openFixture(t, "nyanyanyanyanyanyanya.osu")
+
+	beatmap, err := beatmaps.ParseFromReader(file)
+	if err != nil {
+		t.Fatalf("ParseFromReader() error = %v", err)
+	}
+	if !beatmap.HasStoryboardElements() {
+		t.Fatal("HasStoryboardElements() = false, want true")
+	}
+	if len(beatmap.Events) != 23 {
+		t.Fatalf("len(Events) = %d, want 23", len(beatmap.Events))
+	}
+
+	sprites := beatmap.Events.Filter[*events.Sprite]()
+	if len(sprites) != 13 {
+		t.Errorf("len(sprites) = %d, want 13", len(sprites))
+	}
+
+	animations := beatmap.Events.Filter[*events.Animation]()
+	if len(animations) != 8 {
+		t.Fatalf("len(animations) = %d, want 8", len(animations))
+	}
+	if len(animations[1].Commands) == 0 {
+		t.Fatal("len(second animation commands) = 0, want at least 1")
 	}
 }
 
