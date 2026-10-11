@@ -11,7 +11,6 @@ type Catmull struct {
 }
 
 func NewCatmull(points []vector.Vector2f) Catmull {
-
 	if len(points) != 4 {
 		panic("4 points are needed to create centripetal catmull rom")
 	}
@@ -19,7 +18,6 @@ func NewCatmull(points []vector.Vector2f) Catmull {
 	cm := &Catmull{points: points}
 
 	pointLength := points[1].Dst(points[2])
-
 	pointLength = math32.Ceil(pointLength)
 
 	for i := 1; i <= int(pointLength); i++ {
