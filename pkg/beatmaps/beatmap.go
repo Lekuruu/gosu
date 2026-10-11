@@ -1,5 +1,5 @@
 // Package beatmaps parses osu! beatmap files and exposes their metadata,
-// timing points, difficulty settings, and hit objects.
+// events, timing points, difficulty settings, and hit objects.
 package beatmaps
 
 import (
@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Lekuruu/gosu/pkg/beatmaps/difficulty"
+	"github.com/Lekuruu/gosu/pkg/beatmaps/events"
 	"github.com/Lekuruu/gosu/pkg/beatmaps/objects"
 	"github.com/Lekuruu/gosu/pkg/beatmaps/timing"
 )
@@ -31,10 +32,7 @@ type Beatmap struct {
 
 	Difficulty *difficulty.Difficulty
 
-	// TODO: Storyboard events
-
 	Audio string
-	Bg    string
 
 	SetID int64
 	MapID int64
@@ -49,8 +47,8 @@ type Beatmap struct {
 	BPMDurations map[float64]int64
 
 	Timings    *timing.Timings
+	Events     events.Collection
 	HitObjects []objects.IHitObject
-	Pauses     []*Pause
 
 	arSpecified bool
 }
@@ -173,8 +171,8 @@ func (beatmap *Beatmap) DrainLength() float64 {
 	lastObject := beatmap.HitObjects[len(beatmap.HitObjects)-1]
 
 	breakTime := 0.0
-	for _, pause := range beatmap.Pauses {
-		breakTime += pause.Length()
+	for _, breakEvent := range beatmap.Events.Breaks() {
+		breakTime += float64(breakEvent.Duration())
 	}
 
 	drainLength := lastObject.GetStartTime() - firstObject.GetStartTime() - breakTime

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"cmp"
 	"errors"
+	"fmt"
 	"io"
 	"math"
 	"slices"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/Lekuruu/gosu/internal/files"
 	"github.com/Lekuruu/gosu/internal/math/mutils"
+	"github.com/Lekuruu/gosu/pkg/beatmaps/events"
 	"github.com/Lekuruu/gosu/pkg/beatmaps/objects"
 )
 
@@ -24,11 +26,14 @@ func ParseFromBytes(data []byte) (*Beatmap, error) {
 func ParseFromReader(reader io.Reader) (*Beatmap, error) {
 	beatmap := NewBeatmap()
 	scanner := files.NewScannerBuf(reader, bufferSize)
+	eventParser := events.Parser{}
 
 	var timingPointsCount int
 	var currentSection string
+	var lineNumber int
 
 	for scanner.Scan() {
+		lineNumber++
 		line := scanner.Text()
 
 		if after, ok := strings.CutPrefix(line, "osu file format v"); ok {
@@ -56,8 +61,8 @@ func ParseFromReader(reader io.Reader) (*Beatmap, error) {
 				parseDifficulty(arr, beatmap)
 			}
 		case "Events":
-			if arr := tokenize(line, ","); len(arr) > 1 {
-				parseEvents(arr, beatmap)
+			if err := eventParser.ParseLine(line); err != nil {
+				return nil, fmt.Errorf("parse [Events] line %d: %w", lineNumber, err)
 			}
 		case "TimingPoints":
 			if arr := tokenize(line, ","); len(arr) > 1 {
@@ -91,7 +96,11 @@ func ParseFromReader(reader io.Reader) (*Beatmap, error) {
 			}
 		}
 	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("scan beatmap: %w", err)
+	}
 
+	beatmap.Events = eventParser.Events()
 	beatmap.FinalizePoints()
 
 	if beatmap.Title+beatmap.Artist+beatmap.Creator == "" || timingPointsCount == 0 {
@@ -214,15 +223,6 @@ func parseDifficulty(line []string, beatmap *Beatmap) {
 		if !beatmap.arSpecified {
 			beatmap.Difficulty.SetAR(beatmap.Difficulty.GetOD())
 		}
-	}
-}
-
-func parseEvents(line []string, beatmap *Beatmap) {
-	switch line[0] {
-	case "Background", "0":
-		beatmap.Bg = strings.ReplaceAll(line[2], "\"", "")
-	case "Break", "2":
-		beatmap.Pauses = append(beatmap.Pauses, NewPause(line))
 	}
 }
 
