@@ -1,6 +1,7 @@
 # gosu
 
-something something osu beatmap parser that is very cool and yeah this is a wip as you can probably tell but this will be really useful one day shoutout to the guy who made danser which i can just borrow the code from
+This is meant to become a go library for all things osu! related.
+Right now, I only have beatmap parsing though...
 
 ## Usage
 
