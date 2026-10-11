@@ -35,7 +35,7 @@ func ApproximateCatmullRom(points []vector.Vector2f, detail int) []Linear {
 	catmull := NewCatmull(points)
 	lines := make([]Linear, detail)
 
-	for i := 0; i < detail; i++ {
+	for i := range detail {
 		lines[i] = NewLinear(catmull.PointAt(float32(i)/float32(detail)), catmull.PointAt(float32(i+1)/float32(detail)))
 	}
 
@@ -46,7 +46,7 @@ func ApproximateBezier(points []vector.Vector2f) []Linear {
 	extracted := NewBezierApproximator(points).CreateBezier()
 	lines := make([]Linear, len(extracted)-1)
 
-	for i := 0; i < len(lines); i++ {
+	for i := range lines {
 		lines[i] = NewLinear(extracted[i], extracted[i+1])
 	}
 
