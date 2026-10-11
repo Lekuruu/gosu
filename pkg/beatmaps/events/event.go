@@ -131,31 +131,25 @@ func (*RawEvent) Type() Type { return TypeUnknown }
 type Collection []Event
 
 func (collection Collection) Backgrounds() []*Background {
-	backgrounds := make([]*Background, 0)
-	for _, event := range collection {
-		if background, ok := event.(*Background); ok {
-			backgrounds = append(backgrounds, background)
-		}
-	}
-	return backgrounds
+	return collection.Filter[*Background]()
 }
 
 func (collection Collection) Videos() []*Video {
-	videos := make([]*Video, 0)
-	for _, event := range collection {
-		if video, ok := event.(*Video); ok {
-			videos = append(videos, video)
-		}
-	}
-	return videos
+	return collection.Filter[*Video]()
 }
 
 func (collection Collection) Breaks() []*Break {
-	breaks := make([]*Break, 0)
+	return collection.Filter[*Break]()
+}
+
+func (collection Collection) Filter[T Event]() []T {
+	var result []T
+
 	for _, event := range collection {
-		if breakEvent, ok := event.(*Break); ok {
-			breaks = append(breaks, breakEvent)
+		if value, ok := event.(T); ok {
+			result = append(result, value)
 		}
 	}
-	return breaks
+
+	return result
 }
